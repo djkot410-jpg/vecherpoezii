@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>План рассадки — Вечер поэзии</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; background: #fafafa; }
+    .stage { background: #ccc; padding: 10px; margin: 10px auto; width: 300px; font-weight: bold; }
+    .row { display: flex; justify-content: center; margin: 5px; }
+    .seat {
+      width: 30px; height: 30px; margin: 3px;
+      background: #8bc34a; cursor: pointer; border-radius: 4px;
+      transition: 0.2s;
+    }
+    .seat.booked { background: #f44336; cursor: not-allowed; }
+    form { margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="stage">СЦЕНА</div>
+  <div id="hall"></div>
+
+  <form id="bookingForm" style="display:none;">
+    <p>Вы выбрали место <span id="seatLabel"></span></p>
+    <input type="text" id="name" placeholder="Ваше имя" required>
+    <input type="email" id="email" placeholder="Ваш email" required>
+    <button type="submit">Забронировать</button>
+  </form>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const firebaseConfig = {
+        apiKey: "AIzaSyD_jFzjirvUe90XAX-IGCaMgMlG2KdPOaY",
+        authDomain: "vecherpoezii-20246.firebaseapp.com",
+        databaseURL: "https://vecherpoezii-20246-default-rtdb.firebaseio.com/",
+        projectId: "vecherpoezii-20246",
+        storageBucket: "vecherpoezii-20246.firebasestorage.app",
+        messagingSenderId: "4785873907",
+        appId: "1:4785873907:web:10a708e61d3ab9a6f22886"
+      };
+
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.database();
+
+      const hall = document.getElementById("hall");
+      const form = document.getElementById("bookingForm");
+      const seatLabel = document.getElementById("seatLabel");
+      let selectedSeat = null;
+
+      // Рисуем зал после загрузки DOM
+      for (let r = 1; r <= 5; r++) {
+        const rowDiv = document.createElement("div");
+        rowDiv.className = "row";
+        for (let s = 1; s <= 10; s++) {
+          const seat = document.createElement("div");
+          seat.className = "seat";
+          seat.dataset.id = ${r}-${s};
+          seat.title = Ряд ${r}, Место ${s};
+          rowDiv.appendChild(seat);
+        }
+        hall.appendChild(rowDiv);
+      }
+
+      // Обновляем занятые места из Firebase
+      const seatsRef = db.ref("seats");
+      seatsRef.on("value", snapshot => {
+        const data = snapshot.val() || {};
+        document.querySelectorAll(".seat").forEach(seat => {
+          if (data[seat.dataset.id]) seat.classList.add("booked");
+          else seat.classList.remove("booked");
+        });
+      });
+
+      // Клик по месту
+      hall.addEventListener("click", e => {
+        if (!e.target.classList.contains("seat") || e.target.classList.contains("booked")) return;
+        selectedSeat = e.target.dataset.id;
+        seatLabel.textContent = Ряд ${selectedSeat.split("-")[0]}, Место ${selectedSeat.split("-")[1]};
+        form.style.display = "block";
+      });
+
+      // Подтверждение брони
+      form.addEventListener("submit", e => {
+        e.preventDefault();
+        const name = document.getElementById("name").value.trim();
+        const email = document.getElementById("email").value.trim();
+        if (!selectedSeat || !name || !email) return;
+        db.ref("seats/" + selectedSeat).set({ name, email, time: Date.now() })
+          .then(() => { form.reset(); form.style.display = "none"; })
+          .catch(console.error);
+      });
+    });
+  </script>
+</body>
+</html>
